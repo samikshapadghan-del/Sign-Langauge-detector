@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080b18">
+  <title>Sign Language Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a16;
+      --bg-secondary: #10152b;
+      --surface: rgba(16, 22, 45, 0.66);
+      --surface-strong: rgba(20, 27, 55, 0.88);
+      --surface-soft: rgba(255, 255, 255, 0.055);
+      --border: rgba(255, 255, 255, 0.11);
+      --border-strong: rgba(129, 140, 248, 0.34);
+      --text: #f5f7ff;
+      --muted: #98a2c4;
+      --purple: #8b5cf6;
+      --blue: #4f8cff;
+      --teal: #20d9c2;
+      --success: #2ee6a6;
+      --danger: #ff5c7a;
+      --shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+      --ring-track: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #eef2ff;
+      --bg-secondary: #f8faff;
+      --surface: rgba(255, 255, 255, 0.69);
+      --surface-strong: rgba(255, 255, 255, 0.91);
+      --surface-soft: rgba(79, 70, 229, 0.06);
+      --border: rgba(61, 73, 126, 0.13);
+      --border-strong: rgba(109, 84, 238, 0.28);
+      --text: #15182a;
+      --muted: #68708d;
+      --shadow: 0 22px 60px rgba(73, 79, 121, 0.16);
+      --ring-track: rgba(68, 75, 117, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: linear-gradient(145deg, var(--bg) 0%, var(--bg-secondary) 100%);
+      color: var(--text);
+      font-family: "Inter", sans-serif;
+      transition: background 0.35s ease, color 0.35s ease;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(15px);
+      opacity: 0.28;
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+
+    .orb.one {
+      width: 36rem;
+      height: 36rem;
+      left: -14rem;
+      top: -12rem;
+      background: radial-gradient(circle, #7c3aed, transparent 68%);
+    }
+
+    .orb.two {
+      width: 32rem;
+      height: 32rem;
+      right: -10rem;
+      top: 22%;
+      background: radial-gradient(circle, #0ea5e9, transparent 68%);
+      animation-delay: -6s;
+    }
+
+    .orb.three {
+      width: 28rem;
+      height: 28rem;
+      left: 38%;
+      bottom: -15rem;
+      background: radial-gradient(circle, #14b8a6, transparent 68%);
+      animation-delay: -11s;
+    }
+
+    .particles {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.42) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 72% 35%, rgba(125, 211, 252, 0.4) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 42% 78%, rgba(196, 181, 253, 0.38) 0 1px, transparent 1.5px);
+      background-size: 150px 150px, 210px 210px, 260px 260px;
+      opacity: 0.28;
+      animation: particleMove 24s linear infinite;
+    }
+
+    .app-shell {
+      width: min(1400px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 26px 0 42px;
+    }
+
+    .glass {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px) saturate(145%);
+      -webkit-backdrop-filter: blur(22px) saturate(145%);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 22px;
+      padding: 15px 18px;
+      border-radius: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      flex: 0 0 auto;
+      width: 46px;
+      height: 46px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 15px;
+      background: linear-gradient(135deg, var(--purple), var(--blue) 58%, var(--teal));
+      box-shadow: 0 10px 28px rgba(99, 102, 241, 0.34);
+    }
+
+    .brand-mark svg {
+      width: 25px;
+      height: 25px;
+      color: white;
+    }
+
+    .brand h1 {
+      overflow: hidden;
+      font-family: "Poppins", sans-serif;
+      font-size: clamp(1rem, 2.1vw, 1.38rem);
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .dot {
+      position: relative;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 92, 122, 0.12);
+      transition: background 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .dot.green {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(46, 230, 166, 0.13), 0 0 14px rgba(46, 230, 166, 0.56);
+    }
+
+    .dot.green::after {
+      position: absolute;
+      inset: -5px;
+      border: 1px solid var(--success);
+      border-radius: 50%;
+      content: "";
+      animation: pulse 1.8s ease-out infinite;
+    }
+
+    .icon-button {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface-soft);
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .icon-button:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      background: rgba(124, 92, 246, 0.13);
+    }
+
+    .icon-button svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(330px, 0.75fr);
+      gap: 20px;
+    }
+
+    .card {
+      overflow: hidden;
+      border-radius: 24px;
+    }
+
+    .camera-card {
+      display: flex;
+      min-height: 560px;
+      flex-direction: column;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .card-title {
+      margin-top: 4px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .metrics {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .metric-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .metric-pill strong {
+      color: var(--text);
+      font-size: 0.8rem;
+    }
+
+    .speed-bars {
+      display: flex;
+      height: 13px;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .speed-bars i {
+      display: block;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--teal);
+      animation: speedBars 0.9s ease-in-out infinite alternate;
+    }
+
+    .speed-bars i:nth-child(1) { height: 45%; }
+    .speed-bars i:nth-child(2) { height: 75%; animation-delay: -0.3s; }
+    .speed-bars i:nth-child(3) { height: 100%; animation-delay: -0.6s; }
+
+    .camera-stage {
+      position: relative;
+      display: grid;
+      flex: 1;
+      min-height: 440px;
+      place-items: center;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(8, 11, 24, 0.2), rgba(8, 11, 24, 0.36)),
+        repeating-linear-gradient(0deg, transparent 0 44px, rgba(255, 255, 255, 0.025) 45px),
+        repeating-linear-gradient(90deg, transparent 0 44px, rgba(255, 255, 255, 0.025) 45px),
+        #050711;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      min-height: 440px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      inset: 20px;
+      pointer-events: none;
+    }
+
+    .corner {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border-color: var(--teal);
+      opacity: 0.72;
+      filter: drop-shadow(0 0 6px rgba(32, 217, 194, 0.35));
+    }
+
+    .corner.tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; border-radius: 8px 0 0; }
+    .corner.tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; border-radius: 0 8px 0 0; }
+    .corner.bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; border-radius: 0 0 0 8px; }
+    .corner.br { right: 0; bottom: 0; border-right: 2px solid; border-bottom: 2px solid; border-radius: 0 0 8px; }
+
+    .live-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 9px;
+      background: rgba(7, 10, 22, 0.62);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      backdrop-filter: blur(10px);
+    }
+
+    .live-badge::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ff4f70;
+      box-shadow: 0 0 10px #ff4f70;
+      content: "";
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .recognition-card {
+      position: relative;
+      padding: 23px;
+      border: 1px solid var(--border-strong);
+    }
+
+    .recognition-card::before {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: linear-gradient(90deg, var(--purple), var(--blue), var(--teal));
+      content: "";
+    }
+
+    .recognition-main {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) 145px;
+      align-items: center;
+      gap: 16px;
+      margin: 18px 0 13px;
+    }
+
+    .sign-wrap {
+      min-width: 0;
+    }
+
+    #current-sign {
+      display: block;
+      overflow: hidden;
+      background: linear-gradient(135deg, #c4b5fd 5%, #7ea7ff 45%, #5eead4 95%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      font-family: "Poppins", sans-serif;
+      font-size: clamp(4.8rem, 9vw, 7rem);
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      text-shadow: 0 12px 40px rgba(99, 102, 241, 0.22);
+    }
+
+    #current-sign.pop {
+      animation: signPop 0.35s cubic-bezier(0.2, 0.85, 0.25, 1.25);
+    }
+
+    .sign-caption {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .confidence-ring {
+      position: relative;
+      display: grid;
+      width: 138px;
+      height: 138px;
+      place-items: center;
+    }
+
+    .confidence-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .ring-track,
+    #confidence-fill {
+      fill: none;
+      stroke-width: 10;
+    }
+
+    .ring-track {
+      stroke: var(--ring-track);
+    }
+
+    #confidence-fill {
+      stroke: url(#confidenceGradient);
+      stroke-dasharray: 326.73;
+      stroke-dashoffset: 326.73;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+      filter: drop-shadow(0 0 5px rgba(79, 140, 255, 0.6));
+    }
+
+    .confidence-value {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    #confidence-text {
+      font-family: "Poppins", sans-serif;
+      font-size: 1.42rem;
+      font-weight: 700;
+    }
+
+    .confidence-value small {
+      margin-top: -2px;
+      color: var(--muted);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .stability-row {
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stability-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    .stable-bar {
+      height: 6px;
+      margin-top: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--ring-track);
+    }
+
+    #stable-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--purple), var(--teal));
+      box-shadow: 0 0 12px rgba(32, 217, 194, 0.35);
+      transition: width 0.18s ease;
+    }
+
+    .history-card {
+      padding: 21px;
+    }
+
+    .history-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .history-count {
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    #letter-history {
+      display: flex;
+      min-height: 43px;
+      align-items: center;
+      gap: 7px;
+      overflow: hidden;
+    }
+
+    .history-empty {
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .letter-chip {
+      display: grid;
+      flex: 0 0 36px;
+      width: 36px;
+      height: 39px;
+      place-items: center;
+      border: 1px solid rgba(139, 92, 246, 0.24);
+      border-radius: 11px;
+      background: linear-gradient(145deg, rgba(139, 92, 246, 0.17), rgba(32, 217, 194, 0.08));
+      font-family: "Poppins", sans-serif;
+      font-size: 0.88rem;
+      font-weight: 700;
+      animation: chipIn 0.38s cubic-bezier(0.2, 0.85, 0.3, 1.25) both;
+    }
+
+    .sentence-card {
+      grid-column: 1 / -1;
+      padding: 23px;
+    }
+
+    .sentence-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 15px;
+    }
+
+    .sentence-kicker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--teal);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .sentence-kicker span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 10px rgba(32, 217, 194, 0.6);
+    }
+
+    #sentence-display {
+      min-height: 76px;
+      padding: 17px 18px;
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      background: var(--surface-soft);
+      font-family: "Poppins", sans-serif;
+      font-size: clamp(1.12rem, 2.2vw, 1.65rem);
+      font-weight: 600;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    #sentence-display.placeholder {
+      color: var(--muted);
+      font-family: "Inter", sans-serif;
+      font-size: 0.94rem;
+      font-weight: 500;
+    }
+
+    .sentence-letter {
+      display: inline-block;
+      white-space: pre;
+    }
+
+    .sentence-letter.new {
+      animation: letterFade 0.42s ease both;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .action-button {
+      display: inline-flex;
+      min-height: 43px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface-soft);
+      cursor: pointer;
+      font-size: 0.77rem;
+      font-weight: 700;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .action-button:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      background: rgba(124, 92, 246, 0.13);
+    }
+
+    .action-button.primary {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      color: white;
+      box-shadow: 0 9px 22px rgba(99, 102, 241, 0.22);
+    }
+
+    .action-button.danger {
+      margin-left: auto;
+      color: var(--danger);
+    }
+
+    .action-button svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .settings-card {
+      grid-column: 1 / -1;
+    }
+
+    .assist-card {
+      grid-column: 1 / -1;
+      padding: 23px;
+    }
+
+    .reference-card {
+      grid-column: 1 / -1;
+      padding: 23px;
+    }
+
+    .reference-layout {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.55fr) 1fr;
+      gap: 20px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .reference-image {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .reference-note {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+
+    .reference-note strong {
+      color: var(--text);
+    }
+
+    .assist-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      margin-top: 16px;
+    }
+
+    .quick-phrases,
+    #word-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+
+    .phrase-button,
+    .suggestion-chip {
+      min-height: 39px;
+      padding: 0 13px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 700;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .phrase-button:hover,
+    .suggestion-chip:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      background: rgba(32, 217, 194, 0.12);
+    }
+
+    .phrase-button.urgent {
+      border-color: rgba(255, 92, 122, 0.35);
+      color: var(--danger);
+    }
+
+    .manual-entry {
+      display: flex;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .manual-entry input,
+    .voice-select {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    .manual-entry input {
+      flex: 1;
+      min-height: 43px;
+      padding: 0 13px;
+    }
+
+    .manual-entry input:focus,
+    .voice-select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(32, 217, 194, 0.12);
+    }
+
+    .assist-tools {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .tool-row {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface-soft);
+    }
+
+    .tool-row label,
+    .tool-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .tool-row small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.62rem;
+      font-weight: 400;
+    }
+
+    .voice-select {
+      max-width: 135px;
+      padding: 7px 9px;
+      font-size: 0.69rem;
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 43px;
+      width: 43px;
+      height: 24px;
+    }
+
+    .switch input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--ring-track);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .switch-track::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--muted);
+      content: "";
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .switch input:checked + .switch-track {
+      background: rgba(32, 217, 194, 0.26);
+    }
+
+    .switch input:checked + .switch-track::after {
+      transform: translateX(19px);
+      background: var(--teal);
+      box-shadow: 0 0 12px rgba(32, 217, 194, 0.45);
+    }
+
+    .suggestions-wrap {
+      min-height: 43px;
+      margin-top: 13px;
+    }
+
+    .suggestions-label {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .suggestion-chip {
+      min-height: 32px;
+      color: var(--teal);
+      animation: chipIn 0.3s ease both;
+    }
+
+    .camera-message {
+      position: absolute;
+      inset: auto 50% 22px auto;
+      z-index: 3;
+      width: min(88%, 520px);
+      padding: 11px 14px;
+      border: 1px solid rgba(255, 92, 122, 0.32);
+      border-radius: 12px;
+      background: rgba(35, 8, 18, 0.82);
+      color: #ffd9e1;
+      font-size: 0.72rem;
+      text-align: center;
+      transform: translateX(50%);
+      backdrop-filter: blur(12px);
+    }
+
+    .camera-message[hidden] {
+      display: none;
+    }
+
+    .camera-stage.detecting .camera-overlay {
+      filter: drop-shadow(0 0 10px rgba(32, 217, 194, 0.6));
+      animation: trackingPulse 1.1s ease-in-out infinite alternate;
+    }
+
+    .recognition-card.captured {
+      animation: capturedFlash 0.55s ease;
+    }
+
+    .action-button.active {
+      border-color: rgba(32, 217, 194, 0.45);
+      background: rgba(32, 217, 194, 0.14);
+      color: var(--teal);
+    }
+
+    #toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 20;
+      max-width: min(360px, calc(100% - 40px));
+      padding: 12px 15px;
+      border: 1px solid var(--border-strong);
+      border-radius: 13px;
+      background: var(--surface-strong);
+      box-shadow: var(--shadow);
+      font-size: 0.75rem;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      backdrop-filter: blur(18px);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .settings-card summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 21px;
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .settings-card summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .settings-summary {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .settings-summary svg {
+      width: 18px;
+      height: 18px;
+      color: var(--blue);
+    }
+
+    .chevron {
+      width: 18px;
+      height: 18px;
+      color: var(--muted);
+      transition: transform 0.25s ease;
+    }
+
+    details[open] .chevron {
+      transform: rotate(180deg);
+    }
+
+    .settings-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      padding: 3px 22px 22px;
+      border-top: 1px solid var(--border);
+      animation: settingsOpen 0.25s ease both;
+    }
+
+    .setting {
+      padding-top: 18px;
+    }
+
+    .setting-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 13px;
+    }
+
+    .setting-label label {
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .setting-label p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.67rem;
+      font-weight: 400;
+    }
+
+    .setting-value {
+      min-width: 58px;
+      padding: 6px 9px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-soft);
+      color: var(--teal);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+      background: linear-gradient(90deg, var(--purple) var(--range-progress, 50%), var(--ring-track) var(--range-progress, 50%));
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      width: 18px;
+      height: 18px;
+      border: 3px solid var(--surface-strong);
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 2px rgba(32, 217, 194, 0.25), 0 4px 12px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: 3px solid var(--surface-strong);
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 2px rgba(32, 217, 194, 0.25);
+      cursor: pointer;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    @keyframes drift {
+      to { transform: translate3d(6vw, 5vh, 0) scale(1.12); }
+    }
+
+    @keyframes particleMove {
+      to { background-position: 150px 150px, -210px 210px, 260px -260px; }
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.75; transform: scale(0.65); }
+      to { opacity: 0; transform: scale(1.45); }
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.35; }
+    }
+
+    @keyframes speedBars {
+      to { transform: scaleY(0.35); opacity: 0.5; }
+    }
+
+    @keyframes signPop {
+      0% { opacity: 0.3; transform: scale(0.7) translateY(9px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateX(16px) scale(0.72); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes letterFade {
+      from { opacity: 0; transform: translateY(8px); color: var(--teal); }
+      to { opacity: 1; transform: translateY(0); color: var(--text); }
+    }
+
+    @keyframes settingsOpen {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes trackingPulse {
+      to { opacity: 0.68; transform: scale(0.992); }
+    }
+
+    @keyframes capturedFlash {
+      0%, 100% { box-shadow: var(--shadow); }
+      45% { box-shadow: 0 0 0 2px rgba(32, 217, 194, 0.7), 0 0 42px rgba(32, 217, 194, 0.28); }
+    }
+
+    @media (max-width: 980px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .camera-card {
+        min-height: 500px;
+      }
+
+      .sentence-card,
+      .settings-card,
+      .assist-card,
+      .reference-card {
+        grid-column: 1;
+      }
+
+      .side-stack {
+        grid-template-columns: minmax(310px, 1.1fr) minmax(280px, 0.9fr);
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        width: min(100% - 22px, 1400px);
+        padding: 11px 0 28px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        padding: 13px;
+        border-radius: 18px;
+      }
+
+      .brand p,
+      #status-text {
+        display: none;
+      }
+
+      #status {
+        width: 42px;
+        padding: 0;
+        justify-content: center;
+      }
+
+      .top-actions {
+        gap: 7px;
+      }
+
+      .dashboard,
+      .side-stack {
+        grid-template-columns: 1fr;
+        gap: 13px;
+      }
+
+      .card {
+        border-radius: 19px;
+      }
+
+      .camera-card {
+        min-height: 390px;
+      }
+
+      .camera-stage,
+      #video {
+        min-height: 310px;
+      }
+
+      .card-head {
+        padding: 14px 15px;
+      }
+
+      .metric-pill {
+        padding: 7px 9px;
+      }
+
+      .recognition-main {
+        grid-template-columns: 1fr 128px;
+      }
+
+      .confidence-ring {
+        width: 125px;
+        height: 125px;
+      }
+
+      .sentence-card,
+      .recognition-card,
+      .history-card {
+        padding: 18px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .action-button.danger {
+        margin-left: 0;
+      }
+
+      .settings-content {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .assist-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .reference-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-entry {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+      }
+
+      .brand h1 {
+        max-width: 155px;
+      }
+
+      .recognition-main {
+        grid-template-columns: 1fr;
+      }
+
+      .confidence-ring {
+        margin: 0 auto;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <span class="orb one"></span>
+    <span class="orb two"></span>
+    <span class="orb three"></span>
+    <span class="particles"></span>
+  </div>
+
+  <main class="app-shell">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7.5 11V5.5a1.5 1.5 0 0 1 3 0V10"/>
+            <path d="M10.5 9V3.8a1.5 1.5 0 0 1 3 0V9"/>
+            <path d="M13.5 9V5a1.5 1.5 0 0 1 3 0v6"/>
+            <path d="M16.5 10V7.2a1.5 1.5 0 0 1 3 0v6.3c0 4.1-3.4 7.5-7.5 7.5h-.8a7 7 0 0 1-5.7-2.9l-2.2-3a1.7 1.7 0 0 1 2.5-2.3L7.5 14"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Sign Language Detector</h1>
+          <p>Accessible ASL alphabet communication</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div id="status" role="status" aria-live="polite">
+          <span class="dot" id="dot"></span>
+          <span id="status-text">Connecting to server...</span>
+        </div>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Toggle theme">
+          <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="dashboard">
+      <article class="card camera-card glass">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">Vision stream</p>
+            <h2 class="card-title">Live Hand Tracking</h2>
+          </div>
+          <div class="metrics">
+            <div class="metric-pill" title="Detection speed">
+              <span class="speed-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+              <strong id="fps-value">0 FPS</strong>
+            </div>
+          </div>
+        </div>
+        <div class="camera-stage">
+          <img id="video" alt="Live camera feed with detected hand landmarks">
+          <div class="live-badge">LIVE</div>
+          <div class="camera-message" id="camera-message" hidden></div>
+          <div class="camera-overlay" aria-hidden="true">
+            <i class="corner tl"></i><i class="corner tr"></i>
+            <i class="corner bl"></i><i class="corner br"></i>
+          </div>
+        </div>
+      </article>
+
+      <aside class="side-stack">
+        <article class="card recognition-card glass">
+          <p class="eyebrow">Real-time recognition</p>
+          <h2 class="card-title">Current Detection</h2>
+
+          <div class="recognition-main">
+            <div class="sign-wrap">
+              <span id="current-sign">-</span>
+              <p class="sign-caption" id="detection-tip">Show one hand clearly in the camera</p>
+            </div>
+
+            <div class="confidence-ring" aria-label="Detection confidence">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <defs>
+                  <linearGradient id="confidenceGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#8b5cf6"/>
+                    <stop offset="52%" stop-color="#4f8cff"/>
+                    <stop offset="100%" stop-color="#20d9c2"/>
+                  </linearGradient>
+                </defs>
+                <circle class="ring-track" cx="60" cy="60" r="52"/>
+                <circle id="confidence-fill" cx="60" cy="60" r="52"/>
+              </svg>
+              <div class="confidence-value">
+                <span id="confidence-text">0%</span>
+                <small>Confidence</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="stability-row">
+            <div class="stability-meta">
+              <span>Gesture stability</span>
+              <span id="stability-text">Waiting for sign</span>
+            </div>
+            <div class="stable-bar"><div id="stable-fill"></div></div>
+          </div>
+        </article>
+
+        <article class="card history-card glass">
+          <div class="history-title-row">
+            <div>
+              <p class="eyebrow">Recent detections</p>
+              <h2 class="card-title">Letter History</h2>
+            </div>
+            <span class="history-count">LAST 10</span>
+          </div>
+          <div id="letter-history" aria-live="polite">
+            <span class="history-empty">Detected letters will appear here</span>
+          </div>
+        </article>
+      </aside>
+
+      <article class="card sentence-card glass">
+        <div class="sentence-head">
+          <div>
+            <p class="eyebrow">Translation output</p>
+            <h2 class="card-title">Your Sentence</h2>
+          </div>
+          <div class="sentence-kicker" id="listening-state"><span></span>Listening</div>
+        </div>
+
+        <div id="sentence-display" class="placeholder" aria-live="polite">Start signing to build your sentence...</div>
+
+        <div class="suggestions-wrap">
+          <p class="suggestions-label">Word suggestions</p>
+          <div id="word-suggestions"><span class="history-empty">Begin spelling to see suggestions</span></div>
+        </div>
+
+        <div class="controls">
+          <button class="action-button primary" type="button" onclick="acceptCurrentSign()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Add Current Sign
+          </button>
+          <button class="action-button" type="button" onclick="addSpace()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12v4h14v-4"/></svg>
+            Add Space
+          </button>
+          <button class="action-button" type="button" onclick="backspace()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H9Z"/><path d="m13 9 6 6M19 9l-6 6"/></svg>
+            Backspace
+          </button>
+          <button class="action-button" type="button" onclick="speak()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 5a9 9 0 0 1 0 14"/></svg>
+            Speak
+          </button>
+          <button class="action-button" id="pause-button" type="button" onclick="togglePause()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 5v14M15 5v14"/></svg>
+            Pause
+          </button>
+          <button class="action-button" type="button" onclick="copySentence()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+            Copy
+          </button>
+          <button class="action-button" type="button" onclick="downloadTranscript()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Save
+          </button>
+          <button class="action-button danger" type="button" onclick="clearSentence()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"/></svg>
+            Clear
+          </button>
+        </div>
+      </article>
+
+      <article class="card reference-card glass">
+        <div>
+          <p class="eyebrow">Training reference</p>
+          <h2 class="card-title">ASL Alphabet Guide</h2>
+        </div>
+        <div class="reference-layout">
+          <img class="reference-image" src="/assets/asl_alphabet.jpg" alt="American Sign Language alphabet reference chart">
+          <p class="reference-note">
+            This detector is now set up for the <strong>American Sign Language alphabet</strong>.
+            Use this chart while collecting webcam samples. A single poster is useful as a
+            reference, but the model must learn from real hand landmarks captured from your
+            camera for reliable detection.
+          </p>
+        </div>
+      </article>
+
+      <article class="card assist-card glass">
+        <div>
+          <p class="eyebrow">Communication support</p>
+          <h2 class="card-title">Quick Talk & Accessibility</h2>
+        </div>
+        <div class="assist-grid">
+          <div>
+            <p class="suggestions-label">Tap a common phrase</p>
+            <div class="quick-phrases">
+              <button class="phrase-button" type="button" data-phrase="Hello">Hello</button>
+              <button class="phrase-button" type="button" data-phrase="Thank you">Thank you</button>
+              <button class="phrase-button" type="button" data-phrase="Please help me">Please help me</button>
+              <button class="phrase-button" type="button" data-phrase="I need water">I need water</button>
+              <button class="phrase-button" type="button" data-phrase="I need a doctor">I need a doctor</button>
+              <button class="phrase-button" type="button" data-phrase="Where is the bathroom">Bathroom?</button>
+              <button class="phrase-button urgent" type="button" data-phrase="Emergency, please help me">Emergency</button>
+            </div>
+            <form class="manual-entry" id="manual-entry">
+              <input id="manual-text" type="text" maxlength="120" autocomplete="off" placeholder="Type a message or phrase..." aria-label="Manual message">
+              <button class="action-button primary" type="submit">Add & Speak</button>
+            </form>
+          </div>
+          <div class="assist-tools">
+            <div class="tool-row">
+              <div>
+                <label for="auto-speak">Auto speak</label>
+                <small>Read accepted letters or completed words aloud.</small>
+              </div>
+              <label class="switch">
+                <input id="auto-speak" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </div>
+            <div class="tool-row">
+              <div>
+                <span class="tool-label">Speech mode</span>
+                <small>Choose when automatic speech is triggered.</small>
+              </div>
+              <select class="voice-select" id="speech-mode" aria-label="Automatic speech mode">
+                <option value="word">Completed word</option>
+                <option value="letter">Every letter</option>
+              </select>
+            </div>
+            <button class="action-button" type="button" onclick="toggleFullscreen()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+              Fullscreen camera
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <details class="card settings-card glass">
+        <summary>
+          <div class="settings-summary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+            <div>
+              <p class="eyebrow">Fine tune</p>
+              <h2 class="card-title">Detection Settings</h2>
+            </div>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="settings-content">
+          <div class="setting">
+            <div class="setting-label">
+              <div>
+                <label for="threshold-slider">Confidence Threshold</label>
+                <p>Minimum confidence required to accept a sign.</p>
+              </div>
+              <span class="setting-value" id="threshold-value">25%</span>
+            </div>
+            <input id="threshold-slider" type="range" min="5" max="99" value="25" aria-label="Confidence threshold">
+          </div>
+          <div class="setting">
+            <div class="setting-label">
+              <div>
+                <label for="stability-slider">Stability Frames</label>
+                <p>Frames a gesture must remain steady before capture.</p>
+              </div>
+              <span class="setting-value" id="stability-value">5</span>
+            </div>
+            <input id="stability-slider" type="range" min="1" max="60" value="5" aria-label="Stability frame count">
+          </div>
+          <div class="setting">
+            <div class="setting-label">
+              <div>
+                <label for="cooldown-slider">Capture Cooldown</label>
+                <p>Minimum delay between accepted characters.</p>
+              </div>
+              <span class="setting-value" id="cooldown-value">0.3s</span>
+            </div>
+            <input id="cooldown-slider" type="range" min="2" max="30" value="3" aria-label="Capture cooldown">
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <p class="footer-note">ASL Sign Language Detector - MediaPipe hand tracking - Accessible communication tools</p>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const videoEl = document.getElementById("video");
+    const signEl = document.getElementById("current-sign");
+    const confidenceFill = document.getElementById("confidence-fill");
+    const confidenceText = document.getElementById("confidence-text");
+    const sentenceEl = document.getElementById("sentence-display");
+    const stableFill = document.getElementById("stable-fill");
+    const stabilityText = document.getElementById("stability-text");
+    const detectionTip = document.getElementById("detection-tip");
+    const dot = document.getElementById("dot");
+    const statusText = document.getElementById("status-text");
+    const fpsValue = document.getElementById("fps-value");
+    const historyEl = document.getElementById("letter-history");
+    const thresholdSlider = document.getElementById("threshold-slider");
+    const stabilitySlider = document.getElementById("stability-slider");
+    const thresholdValue = document.getElementById("threshold-value");
+    const stabilityValue = document.getElementById("stability-value");
+    const themeToggle = document.getElementById("theme-toggle");
+    const cooldownSlider = document.getElementById("cooldown-slider");
+    const cooldownValue = document.getElementById("cooldown-value");
+    const cameraStage = document.querySelector(".camera-stage");
+    const cameraMessage = document.getElementById("camera-message");
+    const recognitionCard = document.querySelector(".recognition-card");
+    const suggestionEl = document.getElementById("word-suggestions");
+    const pauseButton = document.getElementById("pause-button");
+    const listeningState = document.getElementById("listening-state");
+    const autoSpeak = document.getElementById("auto-speak");
+    const speechMode = document.getElementById("speech-mode");
+    const toast = document.getElementById("toast");
+
+    const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
+    let ws;
+    let reconnectTimer;
+    let lastSign = "";
+    let previousSentence = "";
+    let lastEventId = 0;
+    let isPaused = false;
+    let toastTimer;
+    let suppressAcceptedSpeech = "";
+
+    function connectWebSocket() {
+      clearTimeout(reconnectTimer);
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const host = location.host || "localhost:5000";
+      ws = new WebSocket(`${protocol}//${host}/ws`);
+
+      ws.onopen = () => {
+        dot.classList.add("green");
+        statusText.textContent = "Connected · starting camera";
+        sendSetting("set_threshold", Number(thresholdSlider.value) / 100);
+        sendSetting("set_stability", Number(stabilitySlider.value));
+        sendSetting("set_cooldown", Number(cooldownSlider.value) / 10);
+      };
+
+      ws.onmessage = (event) => {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (error) {
+          console.warn("Ignored malformed WebSocket message", error);
+          return;
+        }
+
+        if (data.frame) {
+          videoEl.src = "data:image/jpeg;base64," + data.frame;
+        }
+
+        fpsValue.textContent = Math.round(Number(data.fps || 0)) + " FPS";
+        cameraStage.classList.toggle("detecting", Boolean(data.hand_detected && !data.paused));
+        cameraMessage.hidden = data.camera_status !== "error";
+        cameraMessage.textContent = data.camera_error || "Camera is unavailable.";
+
+        if (data.camera_status === "error") {
+          dot.classList.remove("green");
+          statusText.textContent = "Camera unavailable";
+        } else if (data.paused) {
+          dot.classList.remove("green");
+          statusText.textContent = "Detection paused";
+        } else {
+          dot.classList.add("green");
+          statusText.textContent = data.hand_detected
+            ? `Hand detected · camera ${data.camera_index ?? 0}`
+            : `Connected · camera ${data.camera_index ?? 0}`;
+        }
+
+        isPaused = Boolean(data.paused);
+        pauseButton.classList.toggle("active", isPaused);
+        pauseButton.lastChild.textContent = isPaused ? " Resume" : " Pause";
+        listeningState.lastChild.textContent = isPaused ? "Paused" : "Listening";
+
+        const sign = data.sign || "";
+        if (sign !== lastSign) {
+          signEl.textContent = sign || "-";
+          signEl.classList.remove("pop");
+          void signEl.offsetWidth;
+          signEl.classList.add("pop");
+          lastSign = sign;
+        }
+
+        const pct = Math.max(0, Math.min(100, Math.round((data.confidence || 0) * 100)));
+        confidenceFill.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - pct / 100));
+        confidenceText.textContent = pct + "%";
+
+        const stabilityPct = Math.max(0, Math.min(100, Number(data.stability || 0) * 100));
+        stableFill.style.width = stabilityPct + "%";
+        stabilityText.textContent = sign
+          ? Math.round(stabilityPct) + "% steady"
+          : (data.paused ? "Detection paused" : "Waiting for sign");
+        detectionTip.textContent = data.debug_message || (
+          sign ? "Hold the sign steady until it is accepted" : "Show one hand clearly in the camera"
+        );
+
+        if (data.sentence !== undefined) {
+          renderSentence(String(data.sentence || ""));
+        }
+
+        renderSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+
+        const eventId = Number(data.event_id || 0);
+        if (eventId > lastEventId) {
+          recognitionCard.classList.remove("captured");
+          void recognitionCard.offsetWidth;
+          recognitionCard.classList.add("captured");
+          handleAcceptedSpeech(String(data.accepted || ""), String(data.sentence || ""));
+        }
+        lastEventId = eventId;
+      };
+
+      ws.onerror = () => {
+        statusText.textContent = "Connection error";
+        if (!previousSentence) {
+          sentenceEl.textContent = "Cannot connect. Is the server running on port 5000?";
+          sentenceEl.classList.add("placeholder");
+        }
+      };
+
+      ws.onclose = () => {
+        dot.classList.remove("green");
+        statusText.textContent = "Disconnected - retrying...";
+        fpsValue.textContent = "0 FPS";
+        reconnectTimer = setTimeout(connectWebSocket, 2500);
+      };
+    }
+
+    function renderSentence(sentence) {
+      if (sentence === previousSentence) return;
+
+      const isAppend = sentence.startsWith(previousSentence) && sentence.length > previousSentence.length;
+      const newStart = isAppend ? previousSentence.length : sentence.length;
+      sentenceEl.replaceChildren();
+      sentenceEl.dataset.rawSentence = sentence;
+
+      if (!sentence) {
+        sentenceEl.textContent = "Start signing to build your sentence...";
+        sentenceEl.classList.add("placeholder");
+      } else {
+        sentenceEl.classList.remove("placeholder");
+        Array.from(sentence).forEach((character, index) => {
+          const span = document.createElement("span");
+          span.className = "sentence-letter" + (index >= newStart ? " new" : "");
+          span.textContent = character;
+          if (index >= newStart) span.style.animationDelay = ((index - newStart) * 55) + "ms";
+          sentenceEl.appendChild(span);
+        });
+      }
+
+      renderHistory(sentence, isAppend);
+      previousSentence = sentence;
+    }
+
+    function renderHistory(sentence, animateNewest) {
+      const letters = Array.from(sentence).filter((character) => character.trim()).slice(-10);
+      historyEl.replaceChildren();
+
+      if (!letters.length) {
+        const empty = document.createElement("span");
+        empty.className = "history-empty";
+        empty.textContent = "Detected letters will appear here";
+        historyEl.appendChild(empty);
+        return;
+      }
+
+      letters.forEach((letter, index) => {
+        const chip = document.createElement("span");
+        chip.className = "letter-chip";
+        chip.textContent = letter;
+        chip.style.animationDelay = animateNewest && index === letters.length - 1 ? "80ms" : "0ms";
+        historyEl.appendChild(chip);
+      });
+    }
+
+    function renderSuggestions(words) {
+      suggestionEl.replaceChildren();
+      if (!words.length) {
+        const empty = document.createElement("span");
+        empty.className = "history-empty";
+        empty.textContent = "Begin spelling to see suggestions";
+        suggestionEl.appendChild(empty);
+        return;
+      }
+
+      words.forEach((word, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "suggestion-chip";
+        button.textContent = word;
+        button.style.animationDelay = (index * 45) + "ms";
+        button.addEventListener("click", () => {
+          sendSocketMessage({ action: "replace_current_word", value: word });
+          showToast(`Completed word: ${word}`);
+        });
+        suggestionEl.appendChild(button);
+      });
+    }
+
+    function sendSocketMessage(payload) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      }
+    }
+
+    function sendSetting(action, value) {
+      sendSocketMessage({ action, value });
+    }
+
+    function clearSentence() {
+      sendSocketMessage({ action: "clear" });
+    }
+
+    function addSpace() {
+      sendSocketMessage({ action: "space" });
+    }
+
+    function acceptCurrentSign() {
+      sendSocketMessage({ action: "accept_current" });
+      showToast("Added the currently detected sign.");
+    }
+
+    function backspace() {
+      sendSocketMessage({ action: "backspace" });
+    }
+
+    function speak() {
+      const text = sentenceEl.dataset.rawSentence || "";
+      if (!text.trim()) {
+        showToast("There is no text to speak yet.");
+        return;
+      }
+      speakText(text);
+    }
+
+    function speakText(text) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text.trim());
+      utterance.rate = 0.92;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function handleAcceptedSpeech(accepted, sentence) {
+      if (accepted && accepted === suppressAcceptedSpeech) {
+        suppressAcceptedSpeech = "";
+        return;
+      }
+      if (!autoSpeak.checked || !accepted) return;
+      if (speechMode.value === "letter" && accepted.trim().length === 1) {
+        speakText(accepted);
+        return;
+      }
+      if (accepted.trim().length > 1) {
+        speakText(accepted);
+        return;
+      }
+      if (speechMode.value === "word" && accepted === " ") {
+        const words = sentence.trim().split(/\s+/);
+        if (words.length) speakText(words[words.length - 1]);
+      }
+    }
+
+    function togglePause() {
+      sendSocketMessage({ action: isPaused ? "resume" : "pause" });
+    }
+
+    async function copySentence() {
+      const text = sentenceEl.dataset.rawSentence || "";
+      if (!text.trim()) {
+        showToast("There is no text to copy yet.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Sentence copied to clipboard.");
+      } catch {
+        showToast("Clipboard access was blocked by the browser.");
+      }
+    }
+
+    function downloadTranscript() {
+      const text = sentenceEl.dataset.rawSentence || "";
+      if (!text.trim()) {
+        showToast("There is no transcript to save yet.");
+        return;
+      }
+      const blob = new Blob([text.trim() + "\n"], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `sign-language-transcript-${new Date().toISOString().slice(0, 10)}.txt`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showToast("Transcript downloaded.");
+    }
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        cameraStage.requestFullscreen().catch(() => showToast("Fullscreen is not available."));
+      }
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add("show");
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+
+    function updateRange(input, output, suffix) {
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const value = Number(input.value);
+      input.style.setProperty("--range-progress", ((value - min) / (max - min) * 100) + "%");
+      output.textContent = value + suffix;
+    }
+
+    thresholdSlider.addEventListener("input", () => {
+      updateRange(thresholdSlider, thresholdValue, "%");
+      sendSetting("set_threshold", Number(thresholdSlider.value) / 100);
+    });
+
+    stabilitySlider.addEventListener("input", () => {
+      updateRange(stabilitySlider, stabilityValue, "");
+      sendSetting("set_stability", Number(stabilitySlider.value));
+    });
+
+    cooldownSlider.addEventListener("input", () => {
+      const seconds = Number(cooldownSlider.value) / 10;
+      cooldownSlider.style.setProperty(
+        "--range-progress",
+        ((Number(cooldownSlider.value) - Number(cooldownSlider.min)) /
+          (Number(cooldownSlider.max) - Number(cooldownSlider.min)) * 100) + "%"
+      );
+      cooldownValue.textContent = seconds.toFixed(1) + "s";
+      sendSetting("set_cooldown", seconds);
+    });
+
+    document.querySelectorAll("[data-phrase]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const phrase = button.dataset.phrase;
+        sendSocketMessage({ action: "append_phrase", value: phrase });
+        showToast(`Added: ${phrase}`);
+      });
+    });
+
+    document.getElementById("manual-entry").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("manual-text");
+      const value = input.value.trim();
+      if (!value) return;
+      suppressAcceptedSpeech = value.toUpperCase();
+      sendSocketMessage({ action: "append_text", value });
+      speakText(value);
+      input.value = "";
+      showToast("Message added and spoken.");
+    });
+
+    autoSpeak.addEventListener("change", () => {
+      localStorage.setItem("sld-auto-speak", autoSpeak.checked ? "true" : "false");
+      showToast(autoSpeak.checked ? "Automatic speech enabled." : "Automatic speech disabled.");
+    });
+
+    speechMode.addEventListener("change", () => {
+      localStorage.setItem("sld-speech-mode", speechMode.value);
+    });
+
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("sld-theme", theme);
+      const isDark = theme === "dark";
+      themeToggle.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
+      themeToggle.title = isDark ? "Switch to light theme" : "Switch to dark theme";
+      themeToggle.querySelector("svg").innerHTML = isDark
+        ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>'
+        : '<path d="M20.6 15.5A8.5 8.5 0 0 1 8.5 3.4 8.5 8.5 0 1 0 20.6 15.5Z"/>';
+    }
+
+    themeToggle.addEventListener("click", () => {
+      setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+    });
+
+    const savedTheme = localStorage.getItem("sld-theme") || localStorage.getItem("isl-theme");
+    const preferredTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    setTheme(savedTheme || preferredTheme);
+    autoSpeak.checked = localStorage.getItem("sld-auto-speak") === "true";
+    speechMode.value = localStorage.getItem("sld-speech-mode") || "word";
+    updateRange(thresholdSlider, thresholdValue, "%");
+    updateRange(stabilitySlider, stabilityValue, "");
+    cooldownSlider.dispatchEvent(new Event("input"));
+    connectWebSocket();
+  </script>
+</body>
+</html>
