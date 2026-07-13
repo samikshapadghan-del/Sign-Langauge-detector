@@ -24,9 +24,6 @@ if not LANDMARKER_FILE.exists():
     st.error(f"MediaPipe model file not found: {LANDMARKER_FILE}")
     st.stop()
 
-with MODEL_FILE.open("rb") as handle:
-    model = pickle.load(handle)
-
 metadata: dict[str, Any] = {}
 if METADATA_FILE.exists():
     metadata = json.loads(METADATA_FILE.read_text(encoding="utf-8"))
@@ -39,18 +36,30 @@ HAND_CONNECTIONS = (
     (13, 17), (17, 18), (18, 19), (19, 20), (0, 17),
 )
 
-options = mp.tasks.vision.HandLandmarkerOptions(
-    base_options=mp.tasks.BaseOptions(model_asset_path=str(LANDMARKER_FILE)),
-    running_mode=mp.tasks.vision.RunningMode.IMAGE,
-    num_hands=1,
-    min_hand_detection_confidence=0.25,
-    min_hand_presence_confidence=0.25,
-)
+@st.cache_resource
+def load_detector() -> tuple[Any, Any]:
+    with MODEL_FILE.open("rb") as handle:
+        model = pickle.load(handle)
 
-landmarker = mp.tasks.vision.HandLandmarker.create_from_options(options)
+    options = mp.tasks.vision.HandLandmarkerOptions(
+        base_options=mp.tasks.BaseOptions(model_asset_path=str(LANDMARKER_FILE)),
+        running_mode=mp.tasks.vision.RunningMode.IMAGE,
+        num_hands=1,
+        min_hand_detection_confidence=0.25,
+        min_hand_presence_confidence=0.25,
+    )
+    landmarker = mp.tasks.vision.HandLandmarker.create_from_options(options)
+    return model, landmarker
+
+
+try:
+    model, landmarker = load_detector()
+except Exception as exc:  # pragma: no cover - depends on runtime environment
+    st.error(f"Could not initialize the detector: {exc}")
+    st.stop()
 
 st.title("🤟 Sign Language Detector")
-st.caption("Upload an image or use your webcam to test the trained sign classifier.")
+st.caption("Upload an image to test the trained sign classifier.")
 
 if "sentence" not in st.session_state:
     st.session_state.sentence = []
@@ -88,13 +97,10 @@ def annotate_frame(frame: np.ndarray) -> tuple[np.ndarray, str, float]:
 
 
 uploaded = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-webcam = st.camera_input("Or use your webcam")
 
 image_bytes = None
 if uploaded is not None:
     image_bytes = uploaded.getvalue()
-elif webcam is not None:
-    image_bytes = webcam.getvalue()
 
 if image_bytes:
     array = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -128,5 +134,5 @@ else:
 
 st.markdown("### Deployment note")
 st.info(
-    "For Streamlit Cloud, use the main file: streamlit_app.py. The full live-camera backend from the FastAPI version is not suitable for Streamlit Cloud because it needs a local camera device and a long-running server process."
+    "This Streamlit version is tuned for cloud deployment and uses uploaded images rather than a local webcam."
 )
