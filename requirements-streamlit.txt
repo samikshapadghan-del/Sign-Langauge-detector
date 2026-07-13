@@ -1,0 +1,7 @@
+streamlit==1.41.0
+opencv-python-headless==4.10.0.84
+mediapipe==0.10.35
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.9.0
+pickle-mixin==1.0.2
