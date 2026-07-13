@@ -60,11 +60,36 @@ def predict_from_image(model: Any, landmarker: Any, image: np.ndarray) -> tuple[
     return sign, confidence
 
 
+def update_sentence(
+    sentence: list[str],
+    sign: str | None,
+    confidence: float,
+    threshold: float,
+    last_sign: str,
+    stable_count: int,
+) -> tuple[list[str], str, int]:
+    if sign is None or confidence < threshold:
+        return sentence, "", 0
+
+    if sign == last_sign:
+        stable_count += 1
+    else:
+        stable_count = 1
+        last_sign = sign
+
+    if stable_count >= 3:
+        if sentence and sentence[-1] != " ":
+            sentence.append(" ")
+        sentence.append(sign)
+        stable_count = 0
+        last_sign = ""
+
+    return sentence, last_sign, stable_count
+
+
 def main() -> None:
     st.title("🤟 Sign Language Detector")
-    st.caption(
-        "This Streamlit deployment now uses the same trained model and landmark pipeline as the FastAPI backend."
-    )
+    st.caption("This Streamlit deployment now uses the same trained model and landmark pipeline as the FastAPI backend.")
 
     try:
         model, metadata, landmarker = load_pipeline()
@@ -74,6 +99,13 @@ def main() -> None:
 
     st.subheader("Model metadata")
     st.json(metadata)
+
+    if "sentence" not in st.session_state:
+        st.session_state.sentence = []
+    if "last_sign" not in st.session_state:
+        st.session_state.last_sign = ""
+    if "stable_count" not in st.session_state:
+        st.session_state.stable_count = 0
 
     uploaded_file = st.file_uploader("Upload an image for sign classification", type=["png", "jpg", "jpeg"])
     if uploaded_file is None:
@@ -97,10 +129,17 @@ def main() -> None:
         else:
             st.metric("Predicted sign", sign)
             st.metric("Confidence", f"{confidence:.0%}")
+            st.session_state.sentence, st.session_state.last_sign, st.session_state.stable_count = update_sentence(
+                st.session_state.sentence,
+                sign,
+                confidence,
+                0.25,
+                st.session_state.last_sign,
+                st.session_state.stable_count,
+            )
+            st.text_area("Current sentence", "".join(st.session_state.sentence), height=120)
 
-    st.caption(
-        "This deployment uses image inference because Streamlit Cloud does not expose a local webcam in the same way as the desktop backend."
-    )
+    st.caption("This deployment uses image inference rather than a live webcam stream.")
 
 
 if __name__ == "__main__":
