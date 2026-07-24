@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sign-language-detector
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: CAMERA_ENABLED
+        value: "false"
+      - key: PORT
+        value: "10000"

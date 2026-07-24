@@ -6,6 +6,7 @@ import asyncio
 import base64
 import json
 import logging
+import os
 import pickle
 import threading
 import time
@@ -33,11 +34,12 @@ LOGGER = logging.getLogger("sign-language-detector")
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
-FRONTEND_FILE = PROJECT_DIR / "frontend" / "index.html"
-FRONTEND_ASSETS = PROJECT_DIR / "frontend" / "assets"
-MODEL_FILE = BASE_DIR / "model" / "sign_model.pkl"
-METADATA_FILE = BASE_DIR / "model" / "metadata.json"
-LANDMARKER_FILE = BASE_DIR / "hand_landmarker.task"
+FRONTEND_FILE = Path(os.getenv("FRONTEND_FILE", PROJECT_DIR / "frontend" / "index.html"))
+FRONTEND_ASSETS = Path(os.getenv("FRONTEND_ASSETS", PROJECT_DIR / "frontend" / "assets"))
+MODEL_FILE = Path(os.getenv("SIGN_MODEL_PATH", BASE_DIR / "model" / "sign_model.pkl"))
+METADATA_FILE = Path(os.getenv("MODEL_METADATA_PATH", BASE_DIR / "model" / "metadata.json"))
+LANDMARKER_FILE = Path(os.getenv("HAND_LANDMARKER_PATH", BASE_DIR / "hand_landmarker.task"))
+CAMERA_ENABLED = os.getenv("CAMERA_ENABLED", "true").lower() not in {"0", "false", "no"}
 
 HAND_CONNECTIONS = (
     (0, 1), (1, 2), (2, 3), (3, 4),
@@ -113,6 +115,12 @@ class DetectionService:
         self.debug_message = "Starting detector"
 
     def start(self) -> None:
+        if not CAMERA_ENABLED:
+            with self.lock:
+                self.camera_status = "disabled"
+                self.camera_error = "Camera is disabled by CAMERA_ENABLED=false."
+                self.debug_message = "Camera disabled for this deployment."
+            return
         if self.thread and self.thread.is_alive():
             return
         self.stop_event.clear()
@@ -463,7 +471,7 @@ async def favicon() -> Response:
 async def health() -> dict[str, Any]:
     state = service.snapshot(include_frame=False)
     return {
-        "status": "ok" if state["camera_status"] == "ready" else "degraded",
+        "status": "ok" if state["camera_status"] in {"ready", "disabled"} else "degraded",
         "project": "Sign Language Detector",
         "camera": state["camera_status"],
         "camera_error": state["camera_error"],

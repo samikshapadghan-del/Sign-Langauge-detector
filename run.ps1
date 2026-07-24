@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-$Requirements = Join-Path $ProjectRoot "backend\requirements.txt"
+$Requirements = Join-Path $ProjectRoot "requirements.txt"
 
 if (-not (Test-Path $Python)) {
     Write-Host "Creating project virtual environment..." -ForegroundColor Cyan

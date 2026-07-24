@@ -33,9 +33,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 ## Manual Setup
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-cd backend
-..\.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 5000
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+python -m uvicorn backend.app:app --host 127.0.0.1 --port 5000
 ```
 
 ## Training
@@ -71,3 +70,28 @@ The removed `own-data-preprocessed` image dataset is not required at runtime.
 This version recognizes static ASL alphabet signs and builds words from those letters. Full continuous ASL word or sentence recognition requires a separate, labeled temporal video dataset and a sequence model; the current project does not claim that capability. Dynamic letters like J and Z are harder because they involve motion.
 
 The included validation score is measured on held-out frames from the same capture dataset. Real-world accuracy varies by signer, lighting, camera angle, and hand position.
+
+## Deployment
+
+Deployment files included:
+
+- `Dockerfile`
+- `render.yaml`
+- `Procfile`
+- `.env.example`
+- `requirements.txt`
+
+Render can deploy the FastAPI web app and dashboard from this repository. Render servers do not have access to your laptop webcam, so `render.yaml` sets `CAMERA_ENABLED=false` to let the service boot cleanly in the cloud. Full live webcam detection remains the localhost mode.
+
+To deploy with Render:
+
+1. Push the repository to GitHub.
+2. In Render, choose New + Blueprint.
+3. Select this repository.
+4. Render reads `render.yaml` and builds the Docker web service.
+
+Local production-style start command:
+
+```powershell
+python -m uvicorn backend.app:app --host 0.0.0.0 --port 5000
+```

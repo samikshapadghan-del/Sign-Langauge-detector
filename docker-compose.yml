@@ -1,8 +1,10 @@
 services:
-  web:
+  sign-language-detector:
     build: .
     ports:
-      - "8000:8000"
+      - "5000:5000"
     environment:
-      - PORT=8000
-    restart: unless-stopped
+      PORT: 5000
+      CAMERA_ENABLED: "true"
+    devices:
+      - "/dev/video0:/dev/video0"
