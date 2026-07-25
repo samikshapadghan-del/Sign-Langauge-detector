@@ -1296,6 +1296,8 @@
   </style>
 </head>
 <body>
+  <video id="webcam-video" autoplay playsinline muted style="display:none;"></video>
+  <canvas id="webcam-canvas" style="display:none;"></canvas>
   <div class="ambient" aria-hidden="true">
     <span class="orb one"></span>
     <span class="orb two"></span>
@@ -1622,6 +1624,52 @@
     let toastTimer;
     let suppressAcceptedSpeech = "";
 
+    let clientWebcamStream = null;
+    let clientWebcamInterval = null;
+    let isClientWebcamActive = false;
+
+    async function startClientWebcam() {
+      if (isClientWebcamActive) return;
+      const webcamVideo = document.getElementById("webcam-video");
+      const webcamCanvas = document.getElementById("webcam-canvas");
+      if (!webcamVideo || !webcamCanvas) return;
+
+      try {
+        isClientWebcamActive = true;
+        clientWebcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+        });
+        webcamVideo.srcObject = clientWebcamStream;
+        await webcamVideo.play();
+
+        const ctx = webcamCanvas.getContext("2d");
+        clientWebcamInterval = setInterval(() => {
+          if (!ws || ws.readyState !== WebSocket.OPEN || isPaused) return;
+          webcamCanvas.width = webcamVideo.videoWidth || 640;
+          webcamCanvas.height = webcamVideo.videoHeight || 480;
+          if (webcamCanvas.width === 0 || webcamCanvas.height === 0) return;
+          ctx.drawImage(webcamVideo, 0, 0, webcamCanvas.width, webcamCanvas.height);
+          const dataUrl = webcamCanvas.toDataURL("image/jpeg", 0.6);
+          sendSocketMessage({ action: "frame", image: dataUrl });
+        }, 80);
+      } catch (error) {
+        console.warn("Browser camera access failed or denied:", error);
+        isClientWebcamActive = false;
+      }
+    }
+
+    function stopClientWebcam() {
+      if (clientWebcamInterval) {
+        clearInterval(clientWebcamInterval);
+        clientWebcamInterval = null;
+      }
+      if (clientWebcamStream) {
+        clientWebcamStream.getTracks().forEach((track) => track.stop());
+        clientWebcamStream = null;
+      }
+      isClientWebcamActive = false;
+    }
+
     function connectWebSocket() {
       clearTimeout(reconnectTimer);
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -1651,8 +1699,15 @@
 
         fpsValue.textContent = Math.round(Number(data.fps || 0)) + " FPS";
         cameraStage.classList.toggle("detecting", Boolean(data.hand_detected && !data.paused));
-        cameraMessage.hidden = data.camera_status !== "error";
-        cameraMessage.textContent = data.camera_error || "Camera is unavailable.";
+
+        if (data.camera_status === "disabled") {
+          startClientWebcam();
+          cameraMessage.hidden = true;
+        } else {
+          stopClientWebcam();
+          cameraMessage.hidden = data.camera_status !== "error";
+          cameraMessage.textContent = data.camera_error || "Camera is unavailable.";
+        }
 
         if (data.camera_status === "error") {
           dot.classList.remove("green");
@@ -1660,6 +1715,11 @@
         } else if (data.paused) {
           dot.classList.remove("green");
           statusText.textContent = "Detection paused";
+        } else if (data.camera_status === "disabled") {
+          dot.classList.add("green");
+          statusText.textContent = data.hand_detected
+            ? "Hand detected · browser webcam"
+            : "Connected · browser webcam";
         } else {
           dot.classList.add("green");
           statusText.textContent = data.hand_detected
@@ -1719,6 +1779,7 @@
       };
 
       ws.onclose = () => {
+        stopClientWebcam();
         dot.classList.remove("green");
         statusText.textContent = "Disconnected - retrying...";
         fpsValue.textContent = "0 FPS";

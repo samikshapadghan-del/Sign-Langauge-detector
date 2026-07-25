@@ -148,6 +148,12 @@ class DetectionService:
             self.thread.join(timeout=3)
         if self.camera is not None:
             self.camera.release()
+        if hasattr(self, "_landmarker") and self._landmarker is not None:
+            try:
+                self._landmarker.close()
+            except Exception:
+                pass
+            self._landmarker = None
 
     def _open_camera(self) -> cv2.VideoCapture | None:
         backends = [cv2.CAP_DSHOW, cv2.CAP_ANY] if hasattr(cv2, "CAP_DSHOW") else [cv2.CAP_ANY]
@@ -419,6 +425,61 @@ class DetectionService:
                     self.sentence = list((head + word + " ")[-240:])
                     self.event_id += 1
                     self.accepted = word
+            elif action == "frame":
+                image = payload.get("image") or payload.get("data")
+                if image:
+                    self.process_client_frame(str(image))
+
+    def process_client_frame(self, image_data: str) -> None:
+        if not image_data:
+            return
+        try:
+            if "," in image_data:
+                image_data = image_data.split(",", 1)[1]
+            binary_data = base64.b64decode(image_data)
+            np_arr = np.frombuffer(binary_data, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if frame is None:
+                return
+
+            with self.lock:
+                paused = self.paused
+
+            if paused:
+                self._clear_live_prediction()
+                cv2.putText(
+                    frame, "DETECTION PAUSED", (25, 45),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (80, 190, 255), 2,
+                )
+            else:
+                if not hasattr(self, "_landmarker") or self._landmarker is None:
+                    options = mp.tasks.vision.HandLandmarkerOptions(
+                        base_options=mp.tasks.BaseOptions(model_asset_path=str(LANDMARKER_FILE)),
+                        running_mode=mp.tasks.vision.RunningMode.IMAGE,
+                        num_hands=1,
+                        min_hand_detection_confidence=0.25,
+                        min_hand_presence_confidence=0.25,
+                    )
+                    self._landmarker = mp.tasks.vision.HandLandmarker.create_from_options(options)
+
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                result = self._landmarker.detect(
+                    mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                )
+                self._process_result(result, frame)
+
+            ok, buffer = cv2.imencode(
+                ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+            )
+            if ok:
+                encoded = base64.b64encode(buffer).decode("ascii")
+                with self.lock:
+                    self.frame = encoded
+                    if self.camera_status in {"disabled", "error"}:
+                        self.camera_status = "ready"
+                        self.camera_error = ""
+        except Exception as error:
+            LOGGER.warning("Failed processing client frame: %s", error)
 
     def snapshot(self, include_frame: bool = True) -> dict[str, Any]:
         with self.lock:
