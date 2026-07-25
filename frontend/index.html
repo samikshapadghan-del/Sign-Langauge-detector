@@ -344,6 +344,8 @@
     .camera-stage {
       position: relative;
       display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
       flex: 1;
       min-height: 440px;
       place-items: center;
@@ -355,8 +357,10 @@
         #050711;
     }
 
-    #video,
-    #webcam-video {
+    .camera-stage > #video,
+    .camera-stage > #webcam-video {
+      grid-column: 1;
+      grid-row: 1;
       width: 100%;
       height: 100%;
       min-height: 440px;
@@ -364,7 +368,7 @@
     }
 
     #video {
-      display: block;
+      display: none;
     }
 
     #webcam-video {
@@ -1638,9 +1642,10 @@
     let clientWebcamStream = null;
     let clientWebcamInterval = null;
     let isClientWebcamActive = false;
+    let hasClientWebcamFailed = false;
 
     async function startClientWebcam() {
-      if (isClientWebcamActive) return;
+      if (isClientWebcamActive || hasClientWebcamFailed) return;
       const webcamVideo = document.getElementById("webcam-video");
       const webcamCanvas = document.getElementById("webcam-canvas");
       if (!webcamVideo || !webcamCanvas) return;
@@ -1652,8 +1657,10 @@
         });
         webcamVideo.srcObject = clientWebcamStream;
         await webcamVideo.play();
+        cameraMessage.hidden = true;
 
         const ctx = webcamCanvas.getContext("2d");
+        if (clientWebcamInterval) clearInterval(clientWebcamInterval);
         clientWebcamInterval = setInterval(() => {
           if (!ws || ws.readyState !== WebSocket.OPEN || isPaused) return;
           webcamCanvas.width = webcamVideo.videoWidth || 640;
@@ -1666,6 +1673,9 @@
       } catch (error) {
         console.warn("Browser camera access failed or denied:", error);
         isClientWebcamActive = false;
+        hasClientWebcamFailed = true;
+        cameraMessage.hidden = false;
+        cameraMessage.textContent = "Camera access denied or unavailable. Please grant camera permission in your browser site settings and reload.";
       }
     }
 
@@ -1679,6 +1689,7 @@
         clientWebcamStream = null;
       }
       isClientWebcamActive = false;
+      hasClientWebcamFailed = false;
     }
 
     function connectWebSocket() {
@@ -1704,29 +1715,37 @@
           return;
         }
 
+        const webcamVideo = document.getElementById("webcam-video");
         if (data.frame) {
           videoEl.src = "data:image/jpeg;base64," + data.frame;
           videoEl.style.display = "block";
-          const webcamVideo = document.getElementById("webcam-video");
           if (webcamVideo) webcamVideo.style.display = "none";
-        } else if (isClientWebcamActive) {
-          const webcamVideo = document.getElementById("webcam-video");
-          if (webcamVideo && webcamVideo.srcObject) {
-            webcamVideo.style.display = "block";
-            videoEl.style.display = "none";
-          }
+        } else if (isClientWebcamActive && webcamVideo && webcamVideo.srcObject) {
+          webcamVideo.style.display = "block";
+          videoEl.style.display = "none";
+        } else {
+          videoEl.style.display = "none";
+          if (webcamVideo) webcamVideo.style.display = "none";
         }
 
         fpsValue.textContent = Math.round(Number(data.fps || 0)) + " FPS";
         cameraStage.classList.toggle("detecting", Boolean(data.hand_detected && !data.paused));
 
         if (data.camera_status === "disabled") {
-          startClientWebcam();
-          cameraMessage.hidden = true;
+          if (!isClientWebcamActive && !hasClientWebcamFailed) {
+            startClientWebcam();
+          }
+          if (hasClientWebcamFailed) {
+            cameraMessage.hidden = false;
+          } else {
+            cameraMessage.hidden = true;
+          }
         } else {
           stopClientWebcam();
           cameraMessage.hidden = data.camera_status !== "error";
-          cameraMessage.textContent = data.camera_error || "Camera is unavailable.";
+          if (data.camera_status === "error") {
+            cameraMessage.textContent = data.camera_error || "Camera is unavailable.";
+          }
         }
 
         if (data.camera_status === "error") {
