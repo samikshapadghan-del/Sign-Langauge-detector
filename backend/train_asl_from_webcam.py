@@ -16,13 +16,7 @@ from pathlib import Path
 import cv2
 import mediapipe as mp
 
-try:
-    from .train_model import train
-except (ImportError, ValueError):
-    try:
-        from backend.train_model import train
-    except (ImportError, ValueError):
-        from train_model import train
+from backend.train_model import train
 
 
 BASE_DIR = Path(__file__).resolve().parent

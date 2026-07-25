@@ -9,13 +9,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-try:
-    from .features import normalize_landmarks
-except (ImportError, ValueError):
-    try:
-        from backend.features import normalize_landmarks
-    except (ImportError, ValueError):
-        from features import normalize_landmarks
+from backend.features import normalize_landmarks
 
 
 BASE_DIR = Path(__file__).resolve().parent

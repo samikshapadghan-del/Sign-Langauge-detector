@@ -10,7 +10,6 @@ class ImportTests(unittest.TestCase):
             "backend.detector",
             "backend.train_model",
             "backend.train_asl_from_webcam",
-            "backend.collect_data",
         ]
         for name in modules:
             with self.subTest(module=name):

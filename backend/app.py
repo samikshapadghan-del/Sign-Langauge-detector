@@ -23,13 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-try:
-    from .features import FEATURE_COUNT, normalize_landmarks
-except (ImportError, ValueError):
-    try:
-        from backend.features import FEATURE_COUNT, normalize_landmarks
-    except (ImportError, ValueError):
-        from features import FEATURE_COUNT, normalize_landmarks
+from backend.features import FEATURE_COUNT, normalize_landmarks
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")

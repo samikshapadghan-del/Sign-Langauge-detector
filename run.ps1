@@ -20,5 +20,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Starting Sign Language Detector..." -ForegroundColor Green
 Write-Host "Open http://localhost:5000 in your browser." -ForegroundColor Yellow
-Set-Location (Join-Path $ProjectRoot "backend")
-& $Python -m uvicorn app:app --host 127.0.0.1 --port 5000
+& $Python -m uvicorn backend.app:app --host 127.0.0.1 --port 5000
