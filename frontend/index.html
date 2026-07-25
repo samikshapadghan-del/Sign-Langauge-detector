@@ -1351,6 +1351,7 @@
           </div>
         </div>
         <div class="camera-stage">
+          <video id="webcam-video" autoplay playsinline muted style="display:none; width:100%; height:100%; object-fit:cover; border-radius:14px; transform: scaleX(-1);"></video>
           <img id="video" alt="Live camera feed with detected hand landmarks">
           <div class="live-badge">LIVE</div>
           <div class="camera-message" id="camera-message" hidden></div>
@@ -1695,6 +1696,15 @@
 
         if (data.frame) {
           videoEl.src = "data:image/jpeg;base64," + data.frame;
+          videoEl.style.display = "block";
+          const webcamVideo = document.getElementById("webcam-video");
+          if (webcamVideo) webcamVideo.style.display = "none";
+        } else if (isClientWebcamActive) {
+          const webcamVideo = document.getElementById("webcam-video");
+          if (webcamVideo && webcamVideo.srcObject) {
+            webcamVideo.style.display = "block";
+            videoEl.style.display = "none";
+          }
         }
 
         fpsValue.textContent = Math.round(Number(data.fps || 0)) + " FPS";

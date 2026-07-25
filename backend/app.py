@@ -475,11 +475,9 @@ class DetectionService:
                 encoded = base64.b64encode(buffer).decode("ascii")
                 with self.lock:
                     self.frame = encoded
-                    if self.camera_status in {"disabled", "error"}:
-                        self.camera_status = "ready"
-                        self.camera_error = ""
+                    self.camera_error = ""
         except Exception as error:
-            LOGGER.warning("Failed processing client frame: %s", error)
+            LOGGER.exception("Failed processing client frame: %s", error)
 
     def snapshot(self, include_frame: bool = True) -> dict[str, Any]:
         with self.lock:
