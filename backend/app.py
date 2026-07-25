@@ -109,6 +109,8 @@ class DetectionService:
         self.camera_error = ""
         self.camera_index: int | None = None
         self.fps = 0.0
+        self._client_frame_count = 0
+        self._client_fps_started = time.perf_counter()
         self.paused = False
 
         self.threshold = 0.25
@@ -473,9 +475,16 @@ class DetectionService:
             )
             if ok:
                 encoded = base64.b64encode(buffer).decode("ascii")
+                now = time.perf_counter()
                 with self.lock:
                     self.frame = encoded
                     self.camera_error = ""
+                    self._client_frame_count += 1
+                    elapsed = now - self._client_fps_started
+                    if elapsed >= 1.0:
+                        self.fps = round(self._client_frame_count / elapsed, 1)
+                        self._client_frame_count = 0
+                        self._client_fps_started = now
         except Exception as error:
             LOGGER.exception("Failed processing client frame: %s", error)
 
