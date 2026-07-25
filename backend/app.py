@@ -25,8 +25,11 @@ from fastapi.staticfiles import StaticFiles
 
 try:
     from .features import FEATURE_COUNT, normalize_landmarks
-except ImportError:  # pragma: no cover - allows running the module directly during local development
-    from features import FEATURE_COUNT, normalize_landmarks
+except (ImportError, ValueError):
+    try:
+        from backend.features import FEATURE_COUNT, normalize_landmarks
+    except (ImportError, ValueError):
+        from features import FEATURE_COUNT, normalize_landmarks
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -34,11 +37,21 @@ LOGGER = logging.getLogger("sign-language-detector")
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
-FRONTEND_FILE = Path(os.getenv("FRONTEND_FILE", PROJECT_DIR / "frontend" / "index.html"))
-FRONTEND_ASSETS = Path(os.getenv("FRONTEND_ASSETS", PROJECT_DIR / "frontend" / "assets"))
-MODEL_FILE = Path(os.getenv("SIGN_MODEL_PATH", BASE_DIR / "model" / "sign_model.pkl"))
-METADATA_FILE = Path(os.getenv("MODEL_METADATA_PATH", BASE_DIR / "model" / "metadata.json"))
-LANDMARKER_FILE = Path(os.getenv("HAND_LANDMARKER_PATH", BASE_DIR / "hand_landmarker.task"))
+
+
+def _resolve_path(env_var: str, default: Path) -> Path:
+    val = os.getenv(env_var)
+    if val:
+        path = Path(val)
+        return path if path.is_absolute() else (PROJECT_DIR / path).resolve()
+    return default.resolve()
+
+
+FRONTEND_FILE = _resolve_path("FRONTEND_FILE", PROJECT_DIR / "frontend" / "index.html")
+FRONTEND_ASSETS = _resolve_path("FRONTEND_ASSETS", PROJECT_DIR / "frontend" / "assets")
+MODEL_FILE = _resolve_path("SIGN_MODEL_PATH", BASE_DIR / "model" / "sign_model.pkl")
+METADATA_FILE = _resolve_path("MODEL_METADATA_PATH", BASE_DIR / "model" / "metadata.json")
+LANDMARKER_FILE = _resolve_path("HAND_LANDMARKER_PATH", BASE_DIR / "hand_landmarker.task")
 CAMERA_ENABLED = os.getenv("CAMERA_ENABLED", "true").lower() not in {"0", "false", "no"}
 
 HAND_CONNECTIONS = (

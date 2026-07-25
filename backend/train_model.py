@@ -10,7 +10,13 @@ import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
-from features import FEATURE_COUNT, normalize_batch
+try:
+    from .features import FEATURE_COUNT, normalize_batch
+except (ImportError, ValueError):
+    try:
+        from backend.features import FEATURE_COUNT, normalize_batch
+    except (ImportError, ValueError):
+        from features import FEATURE_COUNT, normalize_batch
 
 
 BASE_DIR = Path(__file__).resolve().parent

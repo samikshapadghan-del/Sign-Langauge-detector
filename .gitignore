@@ -10,3 +10,4 @@ __pycache__/
 output/
 tmp/
 .DS_Store
+.agents/
